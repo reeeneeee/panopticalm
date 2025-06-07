@@ -1,0 +1,108 @@
+body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    color: #517899ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+canvas {
+    position: absolute;
+    -webkit-transform:rotateY(180deg); /* Safari and Chrome */
+    -moz-transform:rotateY(180deg); /* Firefox */
+}
+
+button, input{
+    z-index:10;
+}
+
+.dark-mode {
+    background-color: #517899ff;
+    color: #EAE2CCff;
+}
+
+.flex-container {
+    display: flex;
+}
+
+.flex-child {
+    flex: 1;
+    border: 2px solid yellow;
+}  
+
+.flex-child:first-child {
+    margin-right: 20px;
+} 
+
+#video
+{
+    position: absolute;
+    transform: rotateY(180deg);
+    -webkit-transform:rotateY(180deg); /* Safari and Chrome */
+    -moz-transform:rotateY(180deg); /* Firefox */
+    -moz-border-radius:90px;
+    -webkit-border-radius:90px;
+    border-radius:90px;
+
+    filter: blur(3px);
+}
+
+iframe {
+    border: 0px;
+}
+
+.bottom-center { 
+    float: center; 
+    height: 85%; 
+    display: flex; 
+    align-items: flex-end; 
+    shape-outside: inset(calc(80% - 100px) 0 0); 
+} 
+
+.pulse {
+    animation: opacityPulse 3s ease-out;
+    animation-iteration-count: infinite; 
+    opacity: .8;
+}
+
+.top-center {
+    height: 5%; 
+    display: flex;
+    justify-content: center
+}
+
+@keyframes opacityPulse {
+    0% {opacity: 0.0;}
+    50% {opacity: 1.0;}
+    100% {opacity: 0.0;}
+}
+
+
+/******************************************************************************
+START Glitch hello-app default styles
+
+The styles in this section do some minimal CSS resets, set default fonts and 
+colors, and handle the layout for our footer and "Remix on Glitch" button. If
+you're new to CSS they may seem a little complicated, but you can scroll down
+to this section's matching END comment to see page-specific styles.
+******************************************************************************/
+
+a {
+    color: #EAE2CCff;
+  }
+  a:link { 
+    text-decoration: none; 
+  } 
+  a:visited { 
+    text-decoration: none; 
+  } 
+  a:hover { 
+    text-decoration: none;
+    cursor:help;
+  } 
+  a:active { 
+    text-decoration: none; 
+  }

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="./favicon.ico" />
+    <title>Panopticalm</title>
+</head>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.js" crossorigin="anonymous"></script>
+<script defer src="./face-api.min.js"></script>
+<script type="module" defer src="./home.js"></script>
+<link rel="stylesheet" href="./style.css" />
+<body>
+    <div id="message"></div>
+    <div
+      style="font-size: 60px; position: absolute; z-index: 5"
+      id="title"
+      class="pulse top-center"
+    >
+      W A I T
+    </div>
+    <video id="video" width="800" height="600" autoplay playsinline></video>
+    <div
+      style="font-size: 40px; position: absolute; bottom: 20px; z-index: 5"
+      id="bottomNote"
+      class="pulse bottom-center"
+    ></div>
+</body>
+</html>
