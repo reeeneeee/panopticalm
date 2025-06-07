@@ -1,7 +1,7 @@
 import express from "express";
 import bodyParser from "body-parser";
 import morgan from "morgan";
-import { dirname } from "path";
+import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -12,14 +12,14 @@ app.use(bodyParser.json());
 app.use(morgan("tiny"));
 
 // Serve static files from the public directory
-app.use(express.static("public"));
+app.use(express.static(join(__dirname, "public")));
 
 // Set up EJS
 app.set("view engine", "ejs");
-app.set("views", "public");
+app.set("views", join(__dirname, "public"));
 
 app.get("/", (req, res) => {
-    res.render("home");
+    res.render("home", { root: join(__dirname, "public") });
 });
 
 // For local development

@@ -224,7 +224,7 @@ video.addEventListener("play", async () => {
     });
 
     canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
-
+    video.style.filter = 'blur(3px)';
     // If faces detected
     if (detections.length > 0) {
       // CALIBRATION MODE
@@ -285,7 +285,6 @@ video.addEventListener("play", async () => {
             if (!meditationSource) {
               meditationSource = playAudio(meditationBuffer, 0.5);
             }
-            video.setAttribute("class", "color");
 
             if (eyesClosedStartTime == 0) {
               eyesClosedStartTime = audioContext.currentTime;
@@ -295,14 +294,13 @@ video.addEventListener("play", async () => {
             if (eyesClosedStartTime != 0) {
               currentPosition += eyesClosedTime;
               eyesClosedStartTime = 0;
-            };
+            }
             console.log("both eyes open, stopping meditation");
             eyesLastOpenedTime = new Date();
             if (meditationSource) {
               stopAudio(meditationSource);
               meditationSource = null;
             }
-            video.setAttribute("class", "grayscale");
           }
 
       }

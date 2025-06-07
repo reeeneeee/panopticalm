@@ -106,3 +106,7 @@ a {
   a:active { 
     text-decoration: none; 
   }
+
+.grayscale {
+    filter: grayscale(100%);
+}
