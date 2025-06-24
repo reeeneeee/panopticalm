@@ -57,12 +57,23 @@ async function listMusicFiles() {
   try {
       const response = await fetch('/api/music');
       if (!response.ok) {
-          throw new Error('Failed to fetch music files');
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Server error response:', errorData);
+          throw new Error(errorData.error || `Server error: ${response.status} ${response.statusText}`);
       }
       const musicFiles = await response.json();
       return musicFiles;
   } catch (error) {
       console.error('Error listing music files:', error);
+      // Show error to user
+      const errorMessage = error.message || 'Failed to load music files';
+      document.getElementById('meditation-buttons').innerHTML = `
+        <div style="color: #ff6b6b; text-align: center; padding: 20px; background: rgba(255, 107, 107, 0.1); border-radius: 8px;">
+          <h3>⚠️ Error Loading Music</h3>
+          <p>${errorMessage}</p>
+          <p><small>Please check your S3 configuration and try refreshing the page.</small></p>
+        </div>
+      `;
       return [];
   }
 }
@@ -168,25 +179,32 @@ async function startFaceDetection() {
             console.log("both eyes closed, playing meditation");
 
             if (!meditationSource && audioContext && meditationBuffer) {
-              meditationSource = playAudio(meditationBuffer, 0.5);
+                console.log("Creating new audio source, audioContext state:", audioContext.state);
+                meditationSource = playAudio(meditationBuffer, 0.5);
+            } else if (!audioContext) {
+                console.log("Audio context not initialized");
+            } else if (!meditationBuffer) {
+                console.log("Meditation buffer not loaded");
+            } else if (meditationSource) {
+                //console.log("Audio source already exists");
             }
 
             if (eyesClosedStartTime === 0 && audioContext) {
-              eyesClosedStartTime = audioContext.currentTime;
+                eyesClosedStartTime = audioContext.currentTime;
             }
             if (audioContext) {
-              eyesClosedTime = audioContext.currentTime - eyesClosedStartTime;
+                eyesClosedTime = audioContext.currentTime - eyesClosedStartTime;
             }
           } else {
             if (eyesClosedStartTime !== 0) {
-              currentPosition += eyesClosedTime;
-              eyesClosedStartTime = 0;
+                currentPosition += eyesClosedTime;
+                eyesClosedStartTime = 0;
             }
             console.log("both eyes open, stopping meditation");
             eyesLastOpenedTime = new Date();
             if (meditationSource) {
-              stopAudio(meditationSource);
-              meditationSource = null;
+                stopAudio(meditationSource);
+                meditationSource = null;
             }
           }
       }
@@ -202,37 +220,113 @@ async function initializeMeditationFile() {
 
             let button = document.createElement('button');
             button.classList.add('meditation-button');
-            button.innerText = name;
+            button.innerText = name.replace(' no music', '').replace(' music', ' 🎵')
             button.addEventListener('click', async () => {
                 meditationFile = file;
-
-                allVoicesObtained.then((voices) =>
-                  say(
-                    "Please wait a few seconds for models to load." +
-                    " When you see your facial features detected, blink slowly for 5 seconds" +
-                    " to help the camera calibrate to your eye shape." +
-                    " Then, click or tap any key to toggle calibration mode off."
-                  )
-                );
 
                 // Hide the buttons after selection
                 document.getElementById('meditation-buttons').style.display = 'none';
                 // Show the title
                 document.getElementById('title').style.display = 'flex';
+                document.getElementById("title").style.visibility = "visible";
+                document.getElementById("title").setAttribute('style', 'font-size: 60px; position: absolute; z-index: 5; visibility: visible;');
+
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                console.log("Mobile detection result:", isMobile);
+
+                // For testing - force mobile mode
+                // const isMobile = true;
+
+                if (isMobile) {
+                    console.log("isMobile");
+                    console.log("User agent:", navigator.userAgent);
+                    // Show mobile-specific message
+                    document.getElementById('title').innerHTML = "Ready?<br><i>pop in some headphones 🎧<br>then TAP or CLICK to continue</i>";
+                    console.log("Set mobile message");
+                    document.getElementById('title').classList.add('ready-message');
+                    console.log("Added ready-message class");
+                    video.style.filter = 'grayscale(100%) blur(3px)';
+                    console.log("Set video filter");
+                    
+                    // Debug title element
+                    const titleElement = document.getElementById('title');
+                    console.log("Title element:", titleElement);
+                    console.log("Title display:", titleElement.style.display);
+                    console.log("Title visibility:", titleElement.style.visibility);
+                    console.log("Title innerHTML:", titleElement.innerHTML);
+                    
+                    // Wait for user interaction before proceeding
+                    await new Promise((resolve) => {
+                        const handleInteraction = async () => {
+                            // Remove event listeners
+                            ['click', 'touchstart', 'keydown'].forEach(eventType => {
+                                document.removeEventListener(eventType, handleInteraction);
+                            });
+                            
+                            allVoicesObtained.then((voices) =>
+                              say(
+                                "Please wait a few seconds for models to load." +
+                                " When you see your facial features detected, blink slowly for 5 seconds" +
+                                " to help the camera calibrate to your eye shape." +
+                                " Then, click or tap any key to toggle calibration mode off."
+                              )
+                            );
+
+                            // Change message to indicate loading
+                            video.style.filter = 'grayscale(0%) blur(3px)';
+                            document.getElementById('title').innerHTML = 'W A I T';
+                            document.getElementById('title').classList.remove('ready-message');
+                            
+                            // Initialize audio
+                            if (!audioContext) {
+                                console.log("Initializing audio...");
+                                try {
+                                    await initAudio();
+                                    console.log("Audio initialization complete");
+                                } catch (error) {
+                                    console.error("Failed to initialize audio:", error);
+                                }
+                            }
+                            
+                            resolve();
+                        };
+                        
+                        // Add event listeners for user interaction
+                        ['click', 'touchstart', 'keydown'].forEach(eventType => {
+                            document.addEventListener(eventType, handleInteraction, { once: true });
+                        });
+                    });
+                } else {
+                    // Desktop: proceed normally
+                    document.getElementById('title').innerHTML = 'W A I T';
+                    
+                    allVoicesObtained.then((voices) =>
+                      say(
+                        "Please wait a few seconds for models to load." +
+                        " When you see your facial features detected, blink slowly for 5 seconds" +
+                        " to help the camera calibrate to your eye shape." +
+                        " Then, click or tap any key to toggle calibration mode off."
+                      )
+                    );
+                    
+                    // Start listening for user interaction to initialize audio
+                    ['click', 'touchstart', 'keydown'].forEach(eventType => {
+                        document.addEventListener(eventType, async () => {
+                            if (!audioContext) {
+                                console.log("Initializing audio...");
+                                try {
+                                    await initAudio();
+                                    console.log("Audio initialization complete");
+                                } catch (error) {
+                                    console.error("Failed to initialize audio:", error);
+                                }
+                            }
+                        }, { once: true });
+                    });
+                }
 
                 // Start face detection after file selection
                 await startFaceDetection();
-
-                // Start listening for user interaction only after file is selected
-                ['click', 'touchstart', 'keydown'].forEach(eventType => {
-                    document.addEventListener(eventType, async () => {
-                        if (!audioContext) {
-                            console.log("Initializing audio...");
-                            await initAudio();
-                            console.log("Audio initialization complete");
-                        }
-                    }, { once: true });
-                });
             });
             document.getElementById('meditation-buttons').appendChild(button);
         }
@@ -244,25 +338,35 @@ async function initializeMeditationFile() {
 // Initialize Web Audio API
 async function initAudio() {
     try {
-        await initializeMeditationFile(); // Wait for file selection
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Resume audio context (required for mobile browsers)
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
         
         // Disable audio worklets to prevent recording
         if (audioContext.audioWorklet) {
             audioContext.audioWorklet.addModule = () => Promise.reject('Audio worklets disabled');
         }
         
-        // Get signed URL for the selected meditation file
-        const signedUrl = await getSignedUrl(meditationFile);
-        if (!signedUrl) {
-            throw new Error('Failed to get signed URL for meditation file');
+        // Use proxy endpoint to avoid CORS issues
+        const encodedFilename = encodeURIComponent(meditationFile);
+        console.log("Loading audio file from S3 via proxy:", meditationFile);
+        
+        const [meditationResponse] = await Promise.all([
+          fetch(`/music/${encodedFilename}`)
+        ]);
+        
+        if (!meditationResponse.ok) {
+            throw new Error(`Failed to load audio file from S3: ${meditationResponse.status} ${meditationResponse.statusText}`);
         }
         
-        // Load audio file using signed URL
-        const response = await fetch(signedUrl);
-        const arrayBuffer = await response.arrayBuffer();
-        meditationBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        console.log("Audio initialized successfully");
+        const [meditationArrayBuffer] = await Promise.all([
+            meditationResponse.arrayBuffer()
+        ]);
+        meditationBuffer = await audioContext.decodeAudioData(meditationArrayBuffer);
+        console.log("Audio initialized successfully, buffer duration:", meditationBuffer.duration);
     } catch (error) {
         console.error("Error initializing audio:", error);
         audioContext = null;
@@ -277,6 +381,15 @@ function playAudio(buffer, volume = 0.5) {
         return null;
     }
     
+    // Ensure audio context is running (required for mobile)
+    if (audioContext.state === 'suspended') {
+        audioContext.resume().then(() => {
+            console.log("Audio context resumed");
+        }).catch(error => {
+            console.error("Failed to resume audio context:", error);
+        });
+    }
+    
     const source = audioContext.createBufferSource();
     const gainNode = audioContext.createGain();
     
@@ -287,8 +400,14 @@ function playAudio(buffer, volume = 0.5) {
     gainNode.connect(audioContext.destination);
     
     // Start from current position
-    console.log("Starting audio from position:", currentPosition);
-    source.start(0, currentPosition);
+    console.log("Starting audio from position:", currentPosition, "buffer duration:", buffer.duration);
+    try {
+        source.start(0, currentPosition);
+        console.log("Audio started successfully");
+    } catch (error) {
+        console.error("Failed to start audio:", error);
+        return null;
+    }
     
     return { source, gainNode };
 }
@@ -393,6 +512,54 @@ Promise.all([
     startWebcam();
     initializeMeditationFile();
 });
+
+// Global test function for debugging audio issues
+window.testAudio = async function() {
+    console.log("Testing audio functionality...");
+    
+    // Test 1: Check if AudioContext is supported
+    if (!window.AudioContext && !window.webkitAudioContext) {
+        console.error("AudioContext not supported");
+        return;
+    }
+    
+    // Test 2: Create and resume audio context
+    const testContext = new (window.AudioContext || window.webkitAudioContext)();
+    console.log("Audio context created, state:", testContext.state);
+    
+    if (testContext.state === 'suspended') {
+        await testContext.resume();
+        console.log("Audio context resumed, new state:", testContext.state);
+    }
+    
+    // Test 3: Try to load a music file from S3 via proxy
+    try {
+        const response = await fetch('/music/10%20Calmfulness%20-%20Debut%20no%20music.m4a');
+        console.log("Music file fetch response:", response.status, response.ok);
+        
+        if (response.ok) {
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = await testContext.decodeAudioData(arrayBuffer);
+            console.log("Audio buffer loaded, duration:", buffer.duration);
+            
+            // Test 4: Try to play audio
+            const source = testContext.createBufferSource();
+            source.buffer = buffer;
+            source.connect(testContext.destination);
+            source.start(0);
+            console.log("Test audio started successfully");
+            
+            // Stop after 2 seconds
+            setTimeout(() => {
+                source.stop();
+                testContext.close();
+                console.log("Test audio stopped");
+            }, 2000);
+        }
+    } catch (error) {
+        console.error("Audio test failed:", error);
+    }
+};
 
 
 

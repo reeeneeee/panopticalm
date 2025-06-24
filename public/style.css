@@ -123,6 +123,18 @@ a {
     display: none; /* Hidden initially */
 }
 
+.ready-message {
+    font-size: 1.2em;
+    line-height: 1.4;
+    text-align: center;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
+}
+
 #meditation-buttons {
     position: absolute;
     top: 0;
@@ -143,8 +155,8 @@ a {
 }
 
 .meditation-button {
-    background-color: transparent;
-    color: #EAE2CCff;
+    background-color: #EAE2CCff;
+    color: #517899ff;
     border: 2px solid #EAE2CCff;
     padding: 20px;
     border-radius: 8px;
@@ -159,13 +171,89 @@ a {
     justify-content: center;
     text-align: center;
     word-wrap: break-word;
+    box-shadow: 
+        0 0 0 2px rgba(234, 226, 204, 0.6),
+        0 0 20px rgba(234, 226, 204, 0.4),
+        0 0 40px rgba(234, 226, 204, 0.3),
+        0 0 60px rgba(234, 226, 204, 0.2),
+        inset 0 0 30px rgba(234, 226, 204, 0.1);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    position: relative;
+    overflow: hidden;
+}
+
+.meditation-button::before {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    background: linear-gradient(45deg, 
+        rgba(234, 226, 204, 0.8), 
+        rgba(81, 120, 153, 0.3), 
+        rgba(234, 226, 204, 0.8));
+    border-radius: 12px;
+    z-index: -1;
+    filter: blur(6px);
+    -webkit-filter: blur(6px);
+    opacity: 0.9;
+    animation: hazyGlow 3s ease-in-out infinite alternate;
+}
+
+.meditation-button::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: radial-gradient(circle, 
+        rgba(234, 226, 204, 0.4) 0%, 
+        transparent 70%);
+    border-radius: 10px;
+    z-index: -2;
+    filter: blur(4px);
+    -webkit-filter: blur(4px);
+    opacity: 0.6;
+}
+
+@keyframes hazyGlow {
+    0% {
+        opacity: 0.7;
+        filter: blur(6px);
+        -webkit-filter: blur(6px);
+    }
+    100% {
+        opacity: 1;
+        filter: blur(8px);
+        -webkit-filter: blur(8px);
+    }
 }
 
 .meditation-button:hover {
-    background-color: #EAE2CCff;
-    color: #517899ff;
     transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(234, 226, 204, 0.2);
+    box-shadow: 
+        0 0 0 3px rgba(234, 226, 204, 0.8),
+        0 0 30px rgba(234, 226, 204, 0.6),
+        0 0 60px rgba(234, 226, 204, 0.4),
+        0 0 90px rgba(234, 226, 204, 0.3),
+        0 4px 15px rgba(234, 226, 204, 0.3),
+        inset 0 0 30px rgba(234, 226, 204, 0.2);
+}
+
+.meditation-button:hover::before {
+    opacity: 1;
+    filter: blur(10px);
+    -webkit-filter: blur(10px);
+    animation: hazyGlow 1.5s ease-in-out infinite alternate;
+}
+
+.meditation-button:hover::after {
+    opacity: 0.8;
+    filter: blur(6px);
+    -webkit-filter: blur(6px);
 }
 
 .meditation-button:active {
