@@ -177,7 +177,9 @@ async function startFaceDetection() {
           // When eyes are open, stop meditation and display grayscale.
           if (bothEyesClosed) {
             console.log("both eyes closed, playing meditation");
-
+            video.style.filter = 'grayscale(0%) blur(3px)';
+            document.getElementById("title").style.visibility = "hidden";
+            
             if (!meditationSource && audioContext && meditationBuffer) {
                 console.log("Creating new audio source, audioContext state:", audioContext.state);
                 meditationSource = playAudio(meditationBuffer, 0.5);
@@ -200,7 +202,9 @@ async function startFaceDetection() {
                 currentPosition += eyesClosedTime;
                 eyesClosedStartTime = 0;
             }
-            console.log("both eyes open, stopping meditation");
+            console.log("eyes open, stopping meditation");
+            video.style.filter = 'grayscale(100%) blur(3px)';
+            document.getElementById("title").style.visibility = "visible";
             eyesLastOpenedTime = new Date();
             if (meditationSource) {
                 stopAudio(meditationSource);
@@ -229,35 +233,34 @@ async function initializeMeditationFile() {
                 // Show the title
                 document.getElementById('title').style.display = 'flex';
                 document.getElementById("title").style.visibility = "visible";
-                document.getElementById("title").setAttribute('style', 'font-size: 60px; position: absolute; z-index: 5; visibility: visible;');
-
+     
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 console.log("Mobile detection result:", isMobile);
-
-                // For testing - force mobile mode
-                // const isMobile = true;
+                console.log("User agent:", navigator.userAgent);
 
                 if (isMobile) {
                     console.log("isMobile");
                     console.log("User agent:", navigator.userAgent);
                     // Show mobile-specific message
-                    document.getElementById('title').innerHTML = "Ready?<br><i>pop in some headphones 🎧<br>then TAP or CLICK to continue</i>";
-                    console.log("Set mobile message");
+                    document.getElementById('title').innerHTML = "<p><i>It looks like you're on a mobile device.</i></p><p>Pop in some headphones 🎧<br>then, TAP or CLICK to continue</p>";
+                    document.getElementById('title').style.fontSize = '24px';
                     document.getElementById('title').classList.add('ready-message');
-                    console.log("Added ready-message class");
                     video.style.filter = 'grayscale(100%) blur(3px)';
-                    console.log("Set video filter");
                     
                     // Debug title element
                     const titleElement = document.getElementById('title');
-                    console.log("Title element:", titleElement);
-                    console.log("Title display:", titleElement.style.display);
-                    console.log("Title visibility:", titleElement.style.visibility);
-                    console.log("Title innerHTML:", titleElement.innerHTML);
-                    
+
                     // Wait for user interaction before proceeding
                     await new Promise((resolve) => {
-                        const handleInteraction = async () => {
+                        const handleInteraction = async (event) => {
+                            // Only proceed if the interaction is not on a meditation button
+                            if (event.target && event.target.classList.contains('meditation-button')) {
+                                console.log("Ignoring interaction on meditation button");
+                                return;
+                            }
+                            
+                            console.log("Valid user interaction detected, proceeding...");
+                            
                             // Remove event listeners
                             ['click', 'touchstart', 'keydown'].forEach(eventType => {
                                 document.removeEventListener(eventType, handleInteraction);
@@ -274,8 +277,10 @@ async function initializeMeditationFile() {
 
                             // Change message to indicate loading
                             video.style.filter = 'grayscale(0%) blur(3px)';
-                            document.getElementById('title').innerHTML = 'W A I T';
-                            document.getElementById('title').classList.remove('ready-message');
+                            titleElement.style.fontSize = isMobile ? '32px' : '60px';
+                            titleElement.innerHTML = 'W A I T<p>for models to load</p>';
+                            titleElement.classList.remove('ready-message');
+                            titleElement.classList.add('pulse');
                             
                             // Initialize audio
                             if (!audioContext) {
@@ -293,7 +298,7 @@ async function initializeMeditationFile() {
                         
                         // Add event listeners for user interaction
                         ['click', 'touchstart', 'keydown'].forEach(eventType => {
-                            document.addEventListener(eventType, handleInteraction, { once: true });
+                            document.addEventListener(eventType, handleInteraction, { once: false });
                         });
                     });
                 } else {

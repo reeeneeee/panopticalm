@@ -120,19 +120,39 @@ a {
 }
 
 #title {
+    font-size: 60px;
     display: none; /* Hidden initially */
 }
 
 .ready-message {
-    font-size: 1.2em;
+    font-size: 24px;
     line-height: 1.4;
     text-align: center;
     animation: pulse 2s ease-in-out infinite;
+    color: #EAE2CCff !important;
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 80%;
+    margin: 0 auto;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 @keyframes pulse {
     0%, 100% { opacity: 0.8; }
     50% { opacity: 1; }
+}
+
+/* Force visibility for mobile testing */
+#title[style*="visibility: visible"] {
+    display: flex !important;
+    visibility: visible !important;
+    /* opacity: 1 !important; */ /* Removed this to allow pulse animation */
+}
+
+/* Specific pulse animation for title element */
+#title.pulse {
+    animation: opacityPulse 3s ease-out infinite;
+    opacity: 0.8;
 }
 
 #meditation-buttons {
