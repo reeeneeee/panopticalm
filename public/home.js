@@ -19,6 +19,8 @@ let relaxedThreshold = false;
 // music
 let startTime = 0;
 let currentPosition = 0;
+let audioStartTime = 0; // Track when audio started playing
+let lastAudioStartTime = 0; // Track when we last started playing audio
 var synth = new SpeechSynthesisUtterance();
 synth.rate = 1.5;
 synth.pitch = 1;
@@ -175,41 +177,43 @@ async function startFaceDetection() {
 
           // When eyes are closed, play meditation and display color.
           // When eyes are open, stop meditation and display grayscale.
-          if (bothEyesClosed) {
-            console.log("both eyes closed, playing meditation");
+          if ((bothEyesClosed && currentPosition < meditationBuffer.duration) || currentPosition > 5*60*1000) {
+            console.log("both eyes closed, playing meditation from " + currentPosition);
             video.style.filter = 'grayscale(0%) blur(3px)';
             document.getElementById("title").style.visibility = "hidden";
             
             if (!meditationSource && audioContext && meditationBuffer) {
-                console.log("Creating new audio source, audioContext state:", audioContext.state);
-                meditationSource = playAudio(meditationBuffer, 0.5);
+                //console.log("Creating new audio source, audioContext state:", audioContext.state);
+                meditationSource = playAudio(meditationBuffer, currentPosition, 0.5);
+                lastAudioStartTime = audioContext.currentTime; // Record when we started playing
             } else if (!audioContext) {
                 console.log("Audio context not initialized");
             } else if (!meditationBuffer) {
                 console.log("Meditation buffer not loaded");
             } else if (meditationSource) {
-                //console.log("Audio source already exists");
+                // Audio is already playing, no need to do anything
             }
 
             if (eyesClosedStartTime === 0 && audioContext) {
                 eyesClosedStartTime = audioContext.currentTime;
             }
+
             if (audioContext) {
                 eyesClosedTime = audioContext.currentTime - eyesClosedStartTime;
             }
           } else {
-            if (eyesClosedStartTime !== 0) {
-                currentPosition += eyesClosedTime;
-                eyesClosedStartTime = 0;
-            }
-            console.log("eyes open, stopping meditation");
-            video.style.filter = 'grayscale(100%) blur(3px)';
-            document.getElementById("title").style.visibility = "visible";
-            eyesLastOpenedTime = new Date();
-            if (meditationSource) {
-                stopAudio(meditationSource);
-                meditationSource = null;
-            }
+              if (meditationSource) {
+                  // Calculate the current position in the audio buffer
+                  const elapsedTime = audioContext.currentTime - lastAudioStartTime;
+                  currentPosition = Math.min(currentPosition + elapsedTime, meditationBuffer.duration);
+                  console.log("eyes open, stopping meditation at " + currentPosition);
+                  
+                  stopAudio(meditationSource);
+                  meditationSource = null;
+              }
+              video.style.filter = 'grayscale(100%) blur(3px)';
+              document.getElementById("title").style.visibility = "visible";
+              eyesLastOpenedTime = new Date();
           }
       }
     }
@@ -380,7 +384,7 @@ async function initAudio() {
 }
 
 // Play audio using Web Audio API
-function playAudio(buffer, volume = 0.5) {
+function playAudio(buffer, position = 0, volume = 0.5) {
     if (!audioContext || !buffer) {
         console.log("Cannot play audio: audioContext or buffer not initialized");
         return null;
@@ -405,10 +409,10 @@ function playAudio(buffer, volume = 0.5) {
     gainNode.connect(audioContext.destination);
     
     // Start from current position
-    console.log("Starting audio from position:", currentPosition, "buffer duration:", buffer.duration);
+    console.log("Starting audio from position:",  position, "buffer duration:", buffer.duration);
     try {
-        source.start(0, currentPosition);
-        console.log("Audio started successfully");
+        source.start(0, position);
+        // console.log("Audio started successfully");
     } catch (error) {
         console.error("Failed to start audio:", error);
         return null;
