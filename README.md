@@ -1,6 +1,21 @@
 # Panopticalm
 
-Panopticalm is a web app for playing (humorous) guided meditations with enforced eye closure. 
+A web-based meditation application that uses facial recognition to control audio playback based on eye state.
 
-For the first 5 minutes of each meditation, the audio plays only when the webcam detects that the listener's eyes are closed. When at least one is open, the audio stops and the screen goes gray.
-After 5 minutes, they continue to play automatically.
+## How It Works
+
+- **Calibration**: personalizes eye closure detection to your unique eye shape
+- **Audio Control via Eye Tracking**: monitors eye closure status to play guided meditations when your eyes are closed, pausing whenever they open
+
+## Tech Stack
+
+- **Frontend**: JavaScript, face-api.js, Web Audio API
+- **Backend**: Express.js, AWS S3
+- **Computer Vision**: Face landmark detection, eye aspect ratio calculation
+
+## Usage
+
+1. Select a guided meditation track
+2. Blink slowly during calibration
+3. Close your eyes to begin playing the meditation
+4. Open eyes to pause, close to resume
