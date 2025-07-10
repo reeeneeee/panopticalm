@@ -1,4 +1,4 @@
-# Panopticalm
+# Panopticalm 😌
 
 A web-based meditation application that uses facial recognition to control audio playback based on eye state.
 
