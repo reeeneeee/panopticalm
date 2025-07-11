@@ -1,11 +1,14 @@
+// Cancel any existing speech synthesis
 window.speechSynthesis.cancel();
 
+// Get video element for webcam feed
 const video = document.getElementById("video");
 
+// Application state variables
 var calibration_mode = true;
 let detections = [];
 
-// eyes
+// Eye tracking variables
 var eyesLastOpenedTime = new Date();
 var SHUT_EYE_THRESHOLD = 0.285;
 var minEAR = Infinity;
@@ -16,20 +19,20 @@ var bothEyesClosed = false;
 let lastCloseYourEyesTime = 0;
 let relaxedThreshold = false;
 
-// music
+// Audio playback variables
 let startTime = 0;
 let currentPosition = 0;
-let audioStartTime = 0; // Track when audio started playing
 let lastAudioStartTime = 0; // Track when we last started playing audio
-var synth = new SpeechSynthesisUtterance();
-synth.rate = 1.5;
-synth.pitch = 1;
 
-// music setup
+// Speech synthesis setup
+var synth = new SpeechSynthesisUtterance();
+
+// Web Audio API setup
 let audioContext = null;
 let meditationSource = null;
 let meditationBuffer = null;
 
+// Wait for speech synthesis voices to be available (required for mobile)
 const allVoicesObtained = new Promise(function (resolve, reject) {
   let voices = window.speechSynthesis.getVoices();
   if (voices.length !== 0) {
@@ -42,6 +45,7 @@ const allVoicesObtained = new Promise(function (resolve, reject) {
   }
 });
 
+// Set the first available voice for speech synthesis
 allVoicesObtained.then((voices) => (synth.voice = voices[0]));
 
 // Prevent right-click and keyboard shortcuts
@@ -95,10 +99,10 @@ async function getSignedUrl(filename) {
   }
 }
 
-// Choose a random meditation file
-let meditationFile = null; // Default file
+// Selected meditation audio file from S3
+let meditationFile = null;
 
-// Function to start face detection
+// Initialize face detection and start the main application loop
 async function startFaceDetection() {
   // Wait for video to be ready
   if (video.readyState < 2) {
@@ -109,14 +113,15 @@ async function startFaceDetection() {
     });
   }
 
+  // Create canvas overlay for drawing face detection results
   const canvas = faceapi.createCanvasFromMedia(video);
   document.body.append(canvas);
   
-  // Set canvas size to match video dimensions
+  // Scale canvas to match video dimensions for accurate overlay
   const displaySize = { width: video.videoWidth, height: video.videoHeight };
   faceapi.matchDimensions(canvas, displaySize);
 
-  // Main detection loop
+  // Main face detection loop - runs every 100ms
   setInterval(async () => {
     if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
@@ -128,10 +133,11 @@ async function startFaceDetection() {
 
     const resizedDetections = faceapi.resizeResults(detections, displaySize);
 
+    // Clear previous frame's drawings and apply video blur
     canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
     video.style.filter = 'blur(3px)';
     
-    // If faces detected
+    // Process face detection results
     if (detections.length > 0) {
       // CALIBRATION MODE
       if (calibration_mode) {
@@ -142,6 +148,8 @@ async function startFaceDetection() {
 
         document.getElementById("bottomNote").innerHTML =
           "<i>TAP or CLICK</i><p>to listen</p> ";
+        
+        // Track min/max Eye Aspect Ratio during calibration
         minEAR = Math.min(
           minEAR,
           ear(detections[0].landmarks.getLeftEye()),
@@ -153,12 +161,13 @@ async function startFaceDetection() {
           ear(detections[0].landmarks.getRightEye())
         );
 
-        // Update SHUT_EYE_THRESHOLD
+        // Update SHUT_EYE_THRESHOLD based on user's eye shape
         SHUT_EYE_THRESHOLD = Math.max(0.285, minEAR + 0.015);
 
+        // Listen for user interaction to exit calibration mode
         ['click', 'touchstart', 'keydown'].forEach(eventType => {
           document.addEventListener(eventType, () => {
-            calibration_mode = false;
+            calibration_mode = false; // Switch to listening mode
 
             var element = document.body;
             element.classList.remove("dark-mode");
@@ -172,8 +181,9 @@ async function startFaceDetection() {
           document.getElementById("bottomNote").innerHTML = "";
           document.getElementById("title").innerHTML = "close your eyes";
 
+          // Check if both eyes are closed
           let bothEyesClosed = isEyeClosed(detections[0].landmarks.getLeftEye(), relaxedThreshold) && isEyeClosed(detections[0].landmarks.getRightEye(), relaxedThreshold);      
-          relaxedThreshold = bothEyesClosed;
+          relaxedThreshold = bothEyesClosed; // Allow slightly relaxed threshold after first closure
 
           // When eyes are closed, play meditation and display color.
           // When eyes are open, stop meditation and display grayscale.
@@ -220,7 +230,7 @@ async function startFaceDetection() {
   }, 100);
 }
 
-async function initializeMeditationFile() {
+async function initializeMeditationFiles() {
     try {
         const files = await listMusicFiles();
         for (const file of files) {
@@ -428,14 +438,7 @@ function stopAudio(source) {
     }
 }
 
-// Create blob URLs for audio files
-async function createAudioBlobURL(audioPath) {
-    const response = await fetch(audioPath);
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
-}
-  
-// Facial recognition helper functions
+// Eye Aspect Ratio calculation
 function ear(eyeLandmarks) {
     const A = Math.hypot(
       eyeLandmarks[5]._x - eyeLandmarks[1]._x,
@@ -459,23 +462,11 @@ function ear(eyeLandmarks) {
   function isEyeClosed(eyeLandmarks, relaxed = false) {
     return ear(eyeLandmarks) < SHUT_EYE_THRESHOLD + relaxed * 0.015;
   }
-  
-  function likeliestExpression(expressions) {
-    // filtering false positive
-    const maxValue = Math.max(
-      ...Object.values(expressions).filter((value) => value <= 1)
-    );
-    const expressionsKeys = Object.keys(expressions);
-    const mostLikely = expressionsKeys.filter(
-      (expression) => expressions[expression] === maxValue
-    );
-    return mostLikely;
-  }
 
   function say(text) {
     console.log("saying " + text);
   
-    synth.rate = 1.3;
+    synth.rate = 1.5;
     synth.pitch = 1;
     synth.volume = 0.4;
     synth.text = text;
@@ -510,7 +501,8 @@ function ear(eyeLandmarks) {
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
-  // Load models
+
+// Once models are loaded, start webcam and load meditation files 
 Promise.all([
     faceapi.nets.ssdMobilenetv1.loadFromUri("models"),
     faceapi.nets.tinyFaceDetector.loadFromUri("models"),
@@ -519,57 +511,8 @@ Promise.all([
     faceapi.nets.faceExpressionNet.loadFromUri("models"),
 ]).then(() => {
     startWebcam();
-    initializeMeditationFile();
+    initializeMeditationFiles();
 });
-
-// Global test function for debugging audio issues
-window.testAudio = async function() {
-    console.log("Testing audio functionality...");
-    
-    // Test 1: Check if AudioContext is supported
-    if (!window.AudioContext && !window.webkitAudioContext) {
-        console.error("AudioContext not supported");
-        return;
-    }
-    
-    // Test 2: Create and resume audio context
-    const testContext = new (window.AudioContext || window.webkitAudioContext)();
-    console.log("Audio context created, state:", testContext.state);
-    
-    if (testContext.state === 'suspended') {
-        await testContext.resume();
-        console.log("Audio context resumed, new state:", testContext.state);
-    }
-    
-    // Test 3: Try to load a music file from S3 via proxy
-    try {
-        const response = await fetch('/music/10%20Calmfulness%20-%20Debut%20no%20music.m4a');
-        console.log("Music file fetch response:", response.status, response.ok);
-        
-        if (response.ok) {
-            const arrayBuffer = await response.arrayBuffer();
-            const buffer = await testContext.decodeAudioData(arrayBuffer);
-            console.log("Audio buffer loaded, duration:", buffer.duration);
-            
-            // Test 4: Try to play audio
-            const source = testContext.createBufferSource();
-            source.buffer = buffer;
-            source.connect(testContext.destination);
-            source.start(0);
-            console.log("Test audio started successfully");
-            
-            // Stop after 2 seconds
-            setTimeout(() => {
-                source.stop();
-                testContext.close();
-                console.log("Test audio stopped");
-            }, 2000);
-        }
-    } catch (error) {
-        console.error("Audio test failed:", error);
-    }
-};
-
 
 
 

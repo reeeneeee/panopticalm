@@ -1,6 +1,3 @@
-import dotenv from "dotenv";
-dotenv.config();
-
 import express from "express";
 import bodyParser from "body-parser";
 import morgan from "morgan";
@@ -8,12 +5,16 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import dotenv from "dotenv";
+dotenv.config();
+
+const app = express();
+app.use(bodyParser.json());
+app.use(morgan("tiny"));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const app = express();
-
-// AWS S3 Configuration
+// AWS S3 Configuration for meditation audio storage
 const s3Client = new S3Client({
   region: "us-east-2", // Hardcoded to bypass env var issue
   credentials: {
@@ -24,21 +25,21 @@ const s3Client = new S3Client({
 
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
-// Log the actual S3 client configuration
+// Log S3 client configuration for debugging
 console.log("=== S3 Client Configuration ===");
 console.log("S3 Client region:", s3Client.config.region);
 console.log("S3 Client config:", JSON.stringify(s3Client.config, null, 2));
 
-app.use(bodyParser.json());
-app.use(morgan("tiny"));
+
 
 // Serve static files from the public directory
 app.use(express.static(join(__dirname, "public")));
 
-// Set up EJS
+// Configure EJS template engine
 app.set("view engine", "ejs");
 app.set("views", join(__dirname, "public"));
 
+// Main meditation app page
 app.get("/", (req, res) => {
     res.render("home", { root: join(__dirname, "public") });
 });
@@ -65,7 +66,7 @@ app.get("/debug", (req, res) => {
     });
 });
 
-// Endpoint to list music files from S3
+// List available meditation audio files from S3 bucket
 app.get("/api/music", async (req, res) => {
     try {
         console.log("=== S3 Configuration Debug ===");
@@ -88,13 +89,13 @@ app.get("/api/music", async (req, res) => {
         
         const command = new ListObjectsV2Command({
             Bucket: BUCKET_NAME,
-            Prefix: "", // Files are in the root of the bucket
+            Prefix: "", // Meditation files are stored in the root of the bucket
         });
 
         const response = await s3Client.send(command);
         const musicFiles = response.Contents
             ?.filter(obj => obj.Key && obj.Key.endsWith('.m4a'))
-            .map(obj => obj.Key) // Keep the full key since files are in root
+            .map(obj => obj.Key) // Return full key since files are in root
             .filter(filename => filename) || [];
 
         console.log(`Found ${musicFiles.length} music files in S3`);
@@ -119,11 +120,11 @@ app.get("/api/music", async (req, res) => {
     }
 });
 
-// Endpoint to get a signed URL for a music file from S3
+// Generate signed URL for direct S3 access to meditation audio file
 app.get("/api/music/:filename", async (req, res) => {
     try {
         const filename = req.params.filename;
-        const key = filename; // Files are in the root, no prefix needed
+        const key = filename;
         
         console.log('Generating signed URL for S3 file:', key);
         
@@ -133,7 +134,7 @@ app.get("/api/music/:filename", async (req, res) => {
         });
 
         const signedUrl = await getSignedUrl(s3Client, command, {
-            expiresIn: 3600, // 1 hour
+            expiresIn: 3600, // Signed URL expires in 1 hour
         });
             
         console.log('Generated signed URL successfully');
@@ -144,13 +145,13 @@ app.get("/api/music/:filename", async (req, res) => {
     }
 });
 
-// Proxy endpoint to stream audio directly from S3 (avoids CORS issues)
+// Stream meditation audio directly from S3 (avoids CORS issues with Web Audio API)
 app.get("/music/:filename", async (req, res) => {
     try {
         const filename = req.params.filename;
-        const key = filename; // Files are in the root, no prefix needed
+        const key = filename;
         
-        console.log('Streaming audio from S3:', key);
+        console.log('Streaming meditation audio from S3:', key);
         
         const command = new GetObjectCommand({
             Bucket: BUCKET_NAME,
@@ -159,21 +160,21 @@ app.get("/music/:filename", async (req, res) => {
 
         const response = await s3Client.send(command);
         
-        // Set proper headers for audio streaming
+        // Set proper headers for meditation audio streaming
         res.setHeader('Content-Type', 'audio/mp4');
         res.setHeader('Accept-Ranges', 'bytes');
         res.setHeader('Content-Length', response.ContentLength);
         
-        // Stream the audio data
+        // Stream the meditation audio data to client
         if (response.Body) {
             response.Body.pipe(res);
         } else {
-            res.status(404).json({ error: 'Audio file not found' });
+            res.status(404).json({ error: 'Meditation audio file not found' });
         }
         
     } catch (error) {
-        console.error('Error streaming audio from S3:', error);
-        res.status(404).json({ error: 'Audio file not found' });
+        console.error('Error streaming meditation audio from S3:', error);
+        res.status(404).json({ error: 'Meditation audio file not found' });
     }
 });
 
@@ -184,5 +185,5 @@ app.listen(port, () => {
     console.log(`S3 Bucket: ${BUCKET_NAME || 'Not configured'}`);
 });
 
-// Export the Express app for Vercel
+// Export the Express app for Vercel deployment
 export default app;
